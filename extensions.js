@@ -33,9 +33,11 @@ let start=n;txt('xref\n0 6\n0000000000 65535 f \n');for(let i=1;i<=5;i++)txt(Str
 let out=new Uint8Array(n),pos=0;for(let c of chunks){out.set(c,pos);pos+=c.length}return out;
 }
 function scan(){
-const m=modal('Scanner en PDF','<p class="muted small">Photographie ou sélectionne une image, puis ajuste son recadrage.</p><input id="scanfile" class="field" type="file" accept="image/*" capture="environment"><canvas id="scanCanvas" style="width:100%;max-height:48dvh;object-fit:contain;background:#102139"></canvas><div class="grid"><label>Gauche<input class="field crop" id="cL" type="range" min="0" max="40" value="0"></label><label>Droite<input class="field crop" id="cR" type="range" min="0" max="40" value="0"></label><label>Haut<input class="field crop" id="cT" type="range" min="0" max="40" value="0"></label><label>Bas<input class="field crop" id="cB" type="range" min="0" max="40" value="0"></label></div><label>Nom du fichier</label><input class="field" id="scanname" value="Document-scanné.pdf"><button id="scanSave" class="btn" disabled>Créer le PDF</button>');
-const canvas=m.querySelector('#scanCanvas'),ctx=canvas.getContext('2d');let img;
-function draw(){if(!img)return;const v=s=>Number(m.querySelector('#c'+s).value)/100,l=v('L'),r=v('R'),t=v('T'),b=v('B'),w=img.width*(1-l-r),h=img.height*(1-t-b),scale=Math.min(1,1800/Math.max(w,h));canvas.width=Math.max(1,Math.round(w*scale));canvas.height=Math.max(1,Math.round(h*scale));ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.drawImage(img,img.width*l,img.height*t,w,h,0,0,canvas.width,canvas.height)}
+const m=modal('Scanner en PDF','<p class="muted small">Photographie ou sélectionne une image, puis ajuste son recadrage.</p><input id="scanfile" class="field" type="file" accept="image/*" capture="environment"><canvas id="scanCanvas" style="width:100%;max-height:48dvh;object-fit:contain;background:#102139"></canvas><div class="toolbar"><button type="button" class="btn ghost" id="rotateLeft">↶ 90° gauche</button><button type="button" class="btn ghost" id="rotateRight">↷ 90° droite</button></div><div class="grid"><label>Gauche<input class="field crop" id="cL" type="range" min="0" max="40" value="0"></label><label>Droite<input class="field crop" id="cR" type="range" min="0" max="40" value="0"></label><label>Haut<input class="field crop" id="cT" type="range" min="0" max="40" value="0"></label><label>Bas<input class="field crop" id="cB" type="range" min="0" max="40" value="0"></label></div><label>Nom du fichier</label><input class="field" id="scanname" value="Document-scanné.pdf"><button id="scanSave" class="btn" disabled>Créer le PDF</button>');
+const canvas=m.querySelector('#scanCanvas'),ctx=canvas.getContext('2d');let img,rotation=0;
+function draw(){if(!img)return;const v=s=>Number(m.querySelector('#c'+s).value)/100,l=v('L'),r=v('R'),t=v('T'),b=v('B'),w=img.width*(1-l-r),h=img.height*(1-t-b),scale=Math.min(1,1800/Math.max(w,h)),rw=Math.max(1,Math.round(w*scale)),rh=Math.max(1,Math.round(h*scale));const sideways=rotation%180!==0;canvas.width=sideways?rh:rw;canvas.height=sideways?rw:rh;ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.save();ctx.translate(canvas.width/2,canvas.height/2);ctx.rotate(rotation*Math.PI/180);ctx.drawImage(img,img.width*l,img.height*t,w,h,-rw/2,-rh/2,rw,rh);ctx.restore()}
+m.querySelector('#rotateLeft').onclick=()=>{rotation=(rotation+270)%360;draw()};
+m.querySelector('#rotateRight').onclick=()=>{rotation=(rotation+90)%360;draw()};
 m.querySelector('#scanfile').onchange=e=>{const f=e.target.files?.[0];if(!f)return;const url=URL.createObjectURL(f);img=new Image();img.onload=()=>{draw();m.querySelector('#scanSave').disabled=false;URL.revokeObjectURL(url)};img.onerror=()=>{toast('Image illisible');URL.revokeObjectURL(url)};img.src=url};
 m.querySelectorAll('.crop').forEach(e=>e.oninput=draw);
 m.querySelector('#scanSave').onclick=async()=>{try{const blob=await new Promise((resolve,reject)=>canvas.toBlob(b=>b?resolve(b):reject(Error('Conversion impossible')),'image/jpeg',.85));const raw=imagePdf(new Uint8Array(await blob.arrayBuffer()),canvas.width,canvas.height),name=(m.querySelector('#scanname').value.trim()||'Document-scanné').replace(/\.pdf$/i,'')+'.pdf';store.files.push({id:id(),name,mime:'application/pdf',data:bytesToB64(raw),folder,created:new Date().toISOString(),notes:'',tags:'',expiry:'',deletedAt:null});await save();m.remove();render();toast('Scan PDF enregistré et chiffré')}catch(e){toast(e.message)}};
@@ -43,6 +45,13 @@ m.querySelector('#scanSave').onclick=async()=>{try{const blob=await new Promise(
 const oldChange=change;
 change=async function(action,ident){
 if(action==='scan'){scan();return}
+if(action==='delete-file'){
+  const f=store.files.find(x=>x.id===ident&&!x.deletedAt);
+  if(!f)return;
+  if(!confirm('Mettre « '+f.name+' » dans la corbeille ?'))return;
+  f.deletedAt=today();
+  await save();render();toast('Document déplacé dans la corbeille');return;
+}
 if(action==='bio-setup'){await setupBiometry();return}
 if(action==='bio-unlock'){await unlockBiometry();return}
 if(action==='bio-remove'){if(confirm('Désactiver la passkey ?')){delete secret.biometric;await setVault(secret);render()}return}
