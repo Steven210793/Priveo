@@ -160,3 +160,27 @@ document.addEventListener('click',event=>{
  event.preventDefault();event.stopImmediatePropagation();
  change(button.dataset.action,button.dataset.id).catch(e=>toast('Action impossible : '+e.message));
 },true);
+
+/* v9 — render file rows independently of legacy compact .item layout */
+filesPage=function(){
+  let crumbs=[],cur=folder;
+  while(cur){const f=store.folders.find(x=>x.id===cur&&!x.deletedAt);if(!f)break;crumbs.unshift(f);cur=f.parent}
+  let folders=store.folders.filter(x=>!x.deletedAt&&x.parent===folder);
+  let docs=store.files.filter(x=>!x.deletedAt&&x.folder===folder);
+  if(filter){
+    const q=filter.toLocaleLowerCase('fr');
+    folders=store.folders.filter(x=>!x.deletedAt&&x.name.toLocaleLowerCase('fr').includes(q));
+    docs=store.files.filter(x=>!x.deletedAt&&[x.name,x.notes,x.tags,x.expiry].some(v=>String(v||'').toLocaleLowerCase('fr').includes(q)));
+  }
+  const crumbsHtml='<div class="breadcrumb"><button data-action="root">Tous les dossiers</button>'+crumbs.map(x=>' › <button data-action="go-folder" data-id="'+escapeHTML(x.id)+'">'+escapeHTML(x.name)+'</button>').join('')+'</div>';
+  const toolbar='<input id="search" class="field search" placeholder="Rechercher un document, une étiquette..." value="'+escapeHTML(filter)+'"><div class="toolbar"><button class="btn" data-action="create-folder">＋ Dossier</button><button class="btn ghost" data-action="upload">＋ Fichier / Scanner</button><button class="btn ghost" data-action="template">Modèles</button></div>';
+  const folderHtml=folders.length?folders.map(x=>row('📁',x.name,'Dossier',act('Ouvrir','go-folder',x.id)+act('Renommer','rename-folder',x.id)+act('Déplacer','move-folder',x.id)+act('Supprimer','delete-folder',x.id,'warn'))).join(''):'<div class="empty">Aucun dossier ici.</div>';
+  const documentHtml=docs.length?docs.map(x=>{
+    const text=[x.mime||'',x.expiry?'Expire le '+datefmt(x.expiry):'',x.tags||''].filter(Boolean).join(' · ');
+    const buttons=[['Voir','view'],['Renommer','rename-file'],['Déplacer','move-file'],['Infos','info-file'],['Supprimer','delete-file']].map(a=>
+      '<button type="button" data-action="'+a[1]+'" data-id="'+escapeHTML(x.id)+'">'+a[0]+'</button>'
+    ).join('');
+    return '<article class="priveo-doc"><div class="priveo-doc-head"><span class="doc-icon" aria-hidden="true">▤</span><div class="priveo-doc-text"><span class="priveo-doc-title">'+escapeHTML(x.name)+'</span><span class="priveo-doc-desc">'+escapeHTML(text)+'</span></div></div><div class="priveo-doc-buttons">'+buttons+'</div></article>';
+  }).join(''):'<div class="empty">Aucun document ici.</div>';
+  return crumbsHtml+toolbar+'<h2>Dossiers</h2>'+folderHtml+'<h2>Documents</h2>'+documentHtml;
+};
