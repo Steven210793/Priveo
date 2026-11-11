@@ -65,3 +65,22 @@ await save();m.remove();render();showTrash()});
 }
 const oldSave=save;
 save=async function(){if(store){const cutoff=Date.now()-30*86400000,expired=new Set(store.folders.filter(x=>x.deletedAt&&new Date(x.deletedAt+'T00:00:00').getTime()<cutoff).map(x=>x.id));for(let changed=true;changed;){changed=false;for(let f of store.folders)if(expired.has(f.parent)&&!expired.has(f.id)){expired.add(f.id);changed=true}}store.folders=store.folders.filter(x=>!expired.has(x.id));store.files=store.files.filter(x=>!expired.has(x.folder)&&(!x.deletedAt||new Date(x.deletedAt+'T00:00:00').getTime()>=cutoff))}await oldSave()};
+
+const renderBeforeAlerts=render;
+render=function(){
+renderBeforeAlerts();
+if(!key||tab!=='home')return;
+const notices=[];
+for(const s of store.subscriptions){
+ if(!s.next)continue;
+ const d=daydiff(s.next),thresholds=String(s.alerts||'30,7').split(',').map(Number).filter(Number.isFinite);
+ if(d<=Math.max(0,...thresholds))notices.push({name:s.name,days:d,kind:'Abonnement'});
+}
+for(const f of store.files){
+ if(f.deletedAt||!f.expiry)continue;const d=daydiff(f.expiry);if(d<=30)notices.push({name:f.name,days:d,kind:'Document'});
+}
+if(!notices.length)return;
+notices.sort((a,b)=>a.days-b.days);
+const panel=document.createElement('section');panel.className='card';panel.innerHTML='<h3>Alertes à traiter</h3>'+notices.slice(0,8).map(x=>'<div class="item"><div class="main"><strong>'+escapeHTML(x.name)+'</strong><div class="sub">'+escapeHTML(x.kind)+'</div></div><span class="pill">'+(x.days<0?'En retard de '+Math.abs(x.days)+' j':x.days===0?"Aujourd'hui":'Dans '+x.days+' j')+'</span></div>').join('');
+const title=document.querySelector('h2');title?.insertAdjacentElement('afterend',panel);
+};
