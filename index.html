@@ -64,4 +64,4 @@ document.addEventListener('pointerdown',()=>{lastInput=Date.now()},{passive:true
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&key&&(!lockAfter||Date.now()-lastInput>lockAfter*60000))lock()});
 setInterval(()=>{if(key&&lockAfter>0&&Date.now()-lastInput>lockAfter*60000)lock()},15000);
 (async()=>{try{db=await openDB();secret=await getVault();render();if(navigator.storage?.persist)navigator.storage.persist().catch(()=>{});if('serviceWorker' in navigator)navigator.serviceWorker.register('./sw.js').catch(()=>{})}catch(e){$('#app').textContent='Impossible de démarrer le stockage local sécurisé.'}})();
-</script><script src="./extensions.js"></script></body></html>
+</script><script src="./extensions.js"></script><script src="./fixes.js"></script></body></html>
