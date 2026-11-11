@@ -6,7 +6,7 @@ Application web installable (PWA) pour les documents personnels et échéances.
 
 Les données et fichiers sont conservés dans IndexedDB **sous forme chiffrée AES-GCM 256 bits**, avec clé dérivée du mot de passe par PBKDF2-SHA-256 (310 000 itérations). Les données ne sont jamais placées dans le dépôt GitHub.
 
-**Important :** version initiale expérimentale, non auditée. L’authentification biométrique WebAuthn/Android n’est **pas encore implémentée** ; déverrouillage par mot de passe uniquement. Utiliser un mot de passe long et unique. La perte du mot de passe rend les données illisibles. Faire une sauvegarde chiffrée externe avant toute utilisation importante.
+**Important :** version initiale expérimentale, non auditée. L’authentification WebAuthn/PRF est proposée lorsque le téléphone la prend en charge, avec mot de passe en solution de secours ; cette fonction n’a pas encore été validée par un test sur le téléphone. Utiliser un mot de passe long et unique. La perte du mot de passe rend les données illisibles. Faire une sauvegarde chiffrée externe avant toute utilisation importante.
 
 ## Fonctions livrées
 
@@ -19,10 +19,10 @@ Les données et fichiers sont conservés dans IndexedDB **sous forme chiffrée A
 
 ## À compléter
 
-- Authentification biométrique via passkeys/WebAuthn avec garantie de gestion sécurisée de la clé.
-- Scan avec recadrage et conversion en PDF (l'import photo existe seulement).
+- Authentification par passkey Android avec WebAuthn PRF implémentée si l'appareil le permet ; reste à valider en test réel sur Android. Le code de déverrouillage de l'appareil peut se substituer à l'empreinte.
+- Scanner PDF sur une page avec photo et réglages de recadrage désormais disponible ; à tester sur Android.
 - Notifications système hors application (pas garanties avec une application locale pure).
-- Gestion avancée des dossiers supprimés/corbeille et sous-dossiers.
+- Corbeille chiffrée des dossiers et fichiers avec restauration, purge à 30 jours ; à tester sur Android.
 - Tests Android, quota de stockage et audit de sécurité.
 
 ## Déploiement
