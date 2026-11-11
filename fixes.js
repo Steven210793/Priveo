@@ -62,6 +62,25 @@ function showDeleteConfirmation(file){
   });
 }
 change=async function(action,identifier){
+ if(['rename-file','move-file','info-file'].includes(action)){
+   const file=store?.files.find(x=>x.id===identifier&&!x.deletedAt);
+   if(!file){toast('Document introuvable');return}
+   if(action==='rename-file'){
+     const box=modal('Renommer le document','<form id="renameDocumentForm"><label>Nouveau nom</label><input name="name" class="field" required maxlength="250" value="'+escapeHTML(file.name)+'"><button class="btn" type="submit">Enregistrer</button></form>');
+     box.querySelector('form').onsubmit=async ev=>{ev.preventDefault();let name=new FormData(ev.target).get('name').trim();if(!name)return;const before=file.name;file.name=name;try{await save();box.remove();render();toast('Document renommé')}catch(err){file.name=before;toast('Erreur : '+err.message)}};return;
+   }
+   if(action==='move-file'){
+     const active=store.folders.filter(x=>!x.deletedAt);
+     const opts=[{id:'',name:'Racine — Mes documents'},...active.map(x=>({id:x.id,name:x.name}))];
+     const select=opts.map(x=>'<option value="'+escapeHTML(x.id)+'" '+((file.folder||'')===x.id?'selected':'')+'>'+escapeHTML(x.name)+'</option>').join('');
+     const box=modal('Déplacer le document','<form id="moveDocumentForm"><p class="muted small">'+escapeHTML(file.name)+'</p><label>Dossier de destination</label><select name="destination" class="field">'+select+'</select><button class="btn" type="submit">Déplacer ici</button></form>');
+     box.querySelector('form').onsubmit=async ev=>{ev.preventDefault();const dest=new FormData(ev.target).get('destination');if(dest&&!active.some(x=>x.id===dest)){toast('Dossier introuvable');return}const before=file.folder;file.folder=dest||null;try{await save();box.remove();render();toast('Document déplacé')}catch(err){file.folder=before;toast('Erreur : '+err.message)}};return;
+   }
+   if(action==='info-file'){
+     const box=modal('Informations du document','<form id="infoDocumentForm"><p class="muted small">'+escapeHTML(file.name)+'</p><label>Notes</label><textarea name="notes" class="field" rows="3">'+escapeHTML(file.notes||'')+'</textarea><label>Étiquettes (séparées par des virgules)</label><input class="field" name="tags" value="'+escapeHTML(file.tags||'')+'"><label>Date d’expiration</label><input class="field" type="date" name="expiry" value="'+escapeHTML(file.expiry||'')+'"><button class="btn" type="submit">Enregistrer</button></form>');
+     box.querySelector('form').onsubmit=async ev=>{ev.preventDefault();const data=Object.fromEntries(new FormData(ev.target));const old={notes:file.notes,tags:file.tags,expiry:file.expiry};Object.assign(file,data);try{await save();box.remove();render();toast('Informations enregistrées')}catch(err){Object.assign(file,old);toast('Erreur : '+err.message)}};return;
+   }
+ }
  if(action==='delete-file'){
    const doc=store?.files.find(x=>x.id===identifier&&!x.deletedAt);
    if(!doc){toast('Document introuvable');return}
