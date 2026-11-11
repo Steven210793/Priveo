@@ -62,6 +62,36 @@ function showDeleteConfirmation(file){
   });
 }
 change=async function(action,identifier){
+ if(action==='file-menu'){
+   const f=store?.files.find(x=>x.id===identifier&&!x.deletedAt);if(!f)return;
+   const m=modal('Actions du document','<p class="muted small">'+escapeHTML(f.name)+'</p><div class="toolbar">'+
+     act('Voir','view',f.id)+act('Renommer','rename-file',f.id)+act('Déplacer','move-file',f.id)+act('Infos','info-file',f.id)+act('Supprimer','delete-file',f.id,'warn')+'</div>');
+   m.querySelectorAll('[data-action]').forEach(b=>b.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();m.remove();change(b.dataset.action,b.dataset.id)}));
+   return;
+ }
+ if(['rename-folder','move-folder','delete-folder','folder-menu'].includes(action)){
+   const f=store?.folders.find(x=>x.id===identifier&&!x.deletedAt);if(!f){toast('Dossier introuvable');return}
+   if(action==='folder-menu'){
+     const m=modal('Actions du dossier','<p>'+escapeHTML(f.name)+'</p><div class="toolbar">'+
+     act('Ouvrir','go-folder',f.id)+act('Renommer','rename-folder',f.id)+act('Déplacer','move-folder',f.id)+act('Supprimer','delete-folder',f.id,'warn')+'</div>');
+     m.querySelectorAll('[data-action]').forEach(b=>b.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();m.remove();change(b.dataset.action,b.dataset.id)}));return;
+   }
+   if(action==='rename-folder'){
+     const m=modal('Renommer le dossier','<form><label>Nouveau nom</label><input class="field" name="name" maxlength="200" required value="'+escapeHTML(f.name)+'"><button class="btn" type="submit">Enregistrer</button></form>');
+     m.querySelector('form').onsubmit=async e=>{e.preventDefault();const v=new FormData(e.target).get('name').trim();if(!v)return;const prev=f.name;f.name=v;try{await save();m.remove();render();toast('Dossier renommé')}catch(err){f.name=prev;toast('Erreur : '+err.message)}};return;
+   }
+   if(action==='move-folder'){
+     const blocked=allChildren(f.id);const possible=store.folders.filter(x=>!x.deletedAt&&!blocked.has(x.id));
+     const opts=[{id:'',name:'Racine — Mes dossiers'},...possible.map(x=>({id:x.id,name:x.name}))];
+     const sel=opts.map(x=>'<option value="'+escapeHTML(x.id)+'" '+((f.parent||'')===x.id?'selected':'')+'>'+escapeHTML(x.name)+'</option>').join('');
+     const m=modal('Déplacer le dossier','<form><label>Dossier de destination</label><select class="field" name="destination">'+sel+'</select><button class="btn">Déplacer ici</button></form>');
+     m.querySelector('form').onsubmit=async e=>{e.preventDefault();const v=new FormData(e.target).get('destination');if(v&&!possible.some(x=>x.id===v))return toast('Destination invalide');const prev=f.parent;f.parent=v||null;try{await save();m.remove();render();toast('Dossier déplacé')}catch(err){f.parent=prev;toast('Erreur : '+err.message)}};return;
+   }
+   if(action==='delete-folder'){
+     const m=modal('Supprimer le dossier','<p>Mettre <strong>'+escapeHTML(f.name)+'</strong> et son contenu dans la corbeille ?</p><div class="toolbar"><button class="btn warn" id="confirmDeleteFolder">Supprimer</button><button class="btn ghost" data-close>Annuler</button></div>');
+     m.querySelector('#confirmDeleteFolder').onclick=async()=>{const group=allChildren(f.id),backupF=store.folders.map(x=>({id:x.id,deletedAt:x.deletedAt})),backupFiles=store.files.map(x=>({id:x.id,deletedAt:x.deletedAt}));for(const x of store.folders)if(group.has(x.id))x.deletedAt=today();for(const x of store.files)if(group.has(x.folder))x.deletedAt=today();try{await save();folder=null;m.remove();render();toast('Dossier déplacé dans la corbeille')}catch(err){for(const x of store.folders){const prev=backupF.find(y=>y.id===x.id);if(prev)x.deletedAt=prev.deletedAt}for(const x of store.files){const prev=backupFiles.find(y=>y.id===x.id);if(prev)x.deletedAt=prev.deletedAt}toast('Erreur : '+err.message)}};return;
+   }
+ }
  if(['rename-file','move-file','info-file'].includes(action)){
    const file=store?.files.find(x=>x.id===identifier&&!x.deletedAt);
    if(!file){toast('Document introuvable');return}
